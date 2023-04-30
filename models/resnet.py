@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+from data_utils.dataset import Dataset
+from ml_infrastructure import Model, Manager, DataManager
+
 
 class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels, downsample):
@@ -34,11 +37,11 @@ class ResBottleneckBlock(nn.Module):
     def __init__(self, in_channels, out_channels, downsample):
         super().__init__()
         self.downsample = downsample
-        self.conv1 = nn.Conv2d(in_channels, out_channels//4,
+        self.conv1 = nn.Conv2d(in_channels, out_channels // 4,
                                kernel_size=1, stride=1)
         self.conv2 = nn.Conv2d(
-            out_channels//4, out_channels//4, kernel_size=3, stride=2 if downsample else 1, padding=1)
-        self.conv3 = nn.Conv2d(out_channels//4, out_channels, kernel_size=1, stride=1)
+            out_channels // 4, out_channels // 4, kernel_size=3, stride=2 if downsample else 1, padding=1)
+        self.conv3 = nn.Conv2d(out_channels // 4, out_channels, kernel_size=1, stride=1)
 
         if self.downsample or in_channels != out_channels:
             self.shortcut = nn.Sequential(
@@ -49,8 +52,8 @@ class ResBottleneckBlock(nn.Module):
         else:
             self.shortcut = nn.Sequential()
 
-        self.bn1 = nn.BatchNorm2d(out_channels//4)
-        self.bn2 = nn.BatchNorm2d(out_channels//4)
+        self.bn1 = nn.BatchNorm2d(out_channels // 4)
+        self.bn2 = nn.BatchNorm2d(out_channels // 4)
         self.bn3 = nn.BatchNorm2d(out_channels)
 
     def forward(self, input):
@@ -80,24 +83,24 @@ class ResNet(nn.Module):
         self.layer1 = nn.Sequential()
         self.layer1.add_module('conv2_1', resblock(filters[0], filters[1], downsample=False))
         for i in range(1, repeat[0]):
-                self.layer1.add_module('conv2_%d'%(i+1,), resblock(filters[1], filters[1], downsample=False))
+            self.layer1.add_module('conv2_%d' % (i + 1,), resblock(filters[1], filters[1], downsample=False))
 
         self.layer2 = nn.Sequential()
         self.layer2.add_module('conv3_1', resblock(filters[1], filters[2], downsample=True))
         for i in range(1, repeat[1]):
-                self.layer2.add_module('conv3_%d' % (
-                    i+1,), resblock(filters[2], filters[2], downsample=False))
+            self.layer2.add_module('conv3_%d' % (
+                i + 1,), resblock(filters[2], filters[2], downsample=False))
 
         self.layer3 = nn.Sequential()
         self.layer3.add_module('conv4_1', resblock(filters[2], filters[3], downsample=True))
         for i in range(1, repeat[2]):
             self.layer3.add_module('conv2_%d' % (
-                i+1,), resblock(filters[3], filters[3], downsample=False))
+                i + 1,), resblock(filters[3], filters[3], downsample=False))
 
         self.layer4 = nn.Sequential()
         self.layer4.add_module('conv5_1', resblock(filters[3], filters[4], downsample=True))
         for i in range(1, repeat[3]):
-            self.layer4.add_module('conv3_%d'%(i+1,),resblock(filters[4], filters[4], downsample=False))
+            self.layer4.add_module('conv3_%d' % (i + 1,), resblock(filters[4], filters[4], downsample=False))
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
         self.fc = torch.nn.Linear(filters[4], outputs)
@@ -115,3 +118,31 @@ class ResNet(nn.Module):
         input = self.fc(input)
 
         return input
+
+
+if __name__ == "__main__":
+    batch_size = 2
+    train_set = Dataset(csv="./data/train.csv")
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size,
+                                               shuffle=True, num_workers=2)
+    test_set = Dataset(csv="./data/test.csv")
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size,
+                                              shuffle=False, num_workers=2)
+    val_set = Dataset(csv="./data/val.csv")
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size,
+                                             shuffle=False, num_workers=2)
+    classes = [str(x) for x in range(0, 10)]
+
+    dm = DataManager(train_loader=train_loader, validation_loader=val_loader, test_loader=test_loader, classes=classes)
+
+    model = Model(net=ResNet(1, ResBlock, [2, 2, 2, 2], useBottleneck=False, outputs=10), name='resnet')
+    if len(classes) <= 2:
+        model.criterion = torch.nn.BCEWithLogitsLoss()
+    else:
+        model.criterion = torch.nn.CrossEntropyLoss()
+
+    manager = Manager(models=[model], data_manager=dm, epochs=1)
+    manager.perform()
+    manager.save_watcher_results(save_location='../results', save_name='resnet.json')
+
+    manager.shutdown_watcher()

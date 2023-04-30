@@ -34,6 +34,6 @@ class Dataset(Dataset):
         img = img.unsqueeze(0).repeat(1, 1, 1)
         img = img.to(torch.float32)
 
-        target = torch.tensor(example['status']).unsqueeze(0).type(torch.float32)
+        target = torch.tensor(example['class'])
 
         return img, target

@@ -69,11 +69,11 @@ if __name__ == "__main__":
                         help='The IP to use for the watcher')
 
     parser.add_argument('--watcher-port', type=int,
-                        default=5124,
+                        default=5000,
                         help='The port to use for the watcher')
 
     parser.add_argument('--training-noise', type=bool,
-                        default=False,
+                        default=True,
                         help='Boolean to indicate whether to add noise during training')
 
     parser.add_argument('--batch-size', type=int,

@@ -2,10 +2,18 @@ from keras.datasets import mnist
 import pandas as pd
 import numpy as np
 import hashlib
+import os
+
 
 if __name__ == "__main__":
-    (train_X, train_y), (test_X, test_y) = mnist.load_data()
 
+    if not os.path.exists("./data"):
+        os.mkdir("./data")
+
+    if not os.path.exists("./data/images"):
+        os.mkdir("./data/images")
+
+    (train_X, train_y), (test_X, test_y) = mnist.load_data()
     examples = []
     counter = 0
     md5 = hashlib.md5()
@@ -45,4 +53,4 @@ if __name__ == "__main__":
 
     df = pd.DataFrame.from_dict(examples)
 
-    df.to_csv("./data/dataset.csv")
+    df.to_csv("./data/dataset.csv", index = False)

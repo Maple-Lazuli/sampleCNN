@@ -4,3 +4,5 @@ data_utils/__pycache__/*
 models/__pycache__/*
 results/*
 src/__pycache__/*
+Notebooks/*
+data/*

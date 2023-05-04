@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # Write CSVs to disk
     train.to_csv(f"./data/train.csv", index=False)
-    train[train['class'] == 4].iloc[0:2].to_csv("./data/train.csv", index=False)
+    train[train['class'] == 4].iloc[0:1].to_csv("./data/train_one_example.csv", index=False)
     val.to_csv(f"./data/val.csv", index=False)
     test.to_csv(f"./data/test.csv", index=False)
 
